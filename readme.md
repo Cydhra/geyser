@@ -18,7 +18,7 @@ Options:
   -t, --to [<TO>]      The article number to end at (inclusive)
 ```
 
-The `train` command will train the bot on the scraped data. It will use a collaborative filtering algorithm to create
+The `train` command will train the bot on the scraped data. It will create
 a matrix decomposition akin to an [SVD](https://en.wikipedia.org/wiki/Singular_value_decomposition).
 All arguments are optional, and will default to values close to those in the original Funk paper.
 
