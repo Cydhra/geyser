@@ -10,13 +10,13 @@ use crate::database::Database;
 
 const WIKI_URI: &str = "https://scp-wiki.wikidot.com/";
 const VOTE_ENDPOINT: &str = "https://scp-wiki.wikidot.com/ajax-module-connector.php";
-const USER_AGENT: &str = "geyser-scp-vote-counter/0.1.0";
+const USER_AGENT: &str = "geyser-scp-vote-counter/0.2.0";
 
 /// Runs the update process. It downloads articles and votes from the wiki and serializes them into
 /// a database file which can be loaded by the main program.
 pub(crate) struct Updater {
     /// The database builder.
-    db_builder: Database,
+    database: Database,
     client: HttpClient,
     cookie_jar: CookieJar,
     head_selector: Selector,
@@ -28,7 +28,7 @@ impl Updater {
         let cookie_jar = CookieJar::new();
 
         Self {
-            db_builder: Database::new(),
+            database: Database::new(),
             client: HttpClient::builder()
                 .timeout(Duration::from_secs(5))
                 .default_header("User-Agent", USER_AGENT)
@@ -122,18 +122,18 @@ impl Updater {
                     let user_name = user_name_html.inner_html().as_str().trim().to_owned();
                     let vote = vote_span.inner_html().as_str().trim().to_owned();
 
-                    let user_id = self.db_builder.add_user(user_name);
+                    let user_id = self.database.add_user(user_name);
                     votes.push((user_id, vote == "+"));
                 } // else: account deleted
             }
 
             // add article to database
             println!("added article to database with {} votes", votes.len());
-            self.db_builder.add_article(article_name, votes);
+            self.database.add_article(article_name, page_id, votes);
         }
 
         println!("Finished generating database. Saving to file...");
-        self.db_builder.save();
+        self.database.save();
     }
 
     /// Make a request to the given url path and return the response body as a string.

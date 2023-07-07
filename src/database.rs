@@ -10,6 +10,9 @@ pub(crate) struct Database {
     /// A list of all article names. Index in this list is the article id.
     articles: Vec<String>,
 
+    /// A list of all article page ids. Index in this list is the article id.
+    page_ids: Vec<String>,
+
     /// A list of all article votes. Each entry is a tuple of the user id and the vote. Index in
     /// this list is the article id.
     article_votes: Vec<Vec<(usize, bool)>>,
@@ -26,6 +29,7 @@ impl Database {
     pub(crate) fn new() -> Self {
         Self {
             articles: Vec::new(),
+            page_ids: Vec::new(),
             article_votes: Vec::new(),
             total_votes: 0,
             users: BTreeMap::new(),
@@ -48,8 +52,14 @@ impl Database {
     }
 
     /// Adds a new article and all its ratings to the database.
-    pub(crate) fn add_article(&mut self, article: String, votes: Vec<(usize, bool)>) {
+    /// # Parameters
+    /// - ```article```: The article name.
+    /// - ```page_id```: The wikidot page id of the article for future requests
+    /// - ```votes```: A list of tuples of user ids and votes. The first component of the tuple is
+    /// the user id, the second component is the vote (true for upvote, false for downvote).
+    pub(crate) fn add_article(&mut self, article: String, page_id: String, votes: Vec<(usize, bool)>) {
         self.articles.push(article);
+        self.page_ids.push(page_id);
         self.total_votes += votes.len();
         self.article_votes.push(votes);
     }
