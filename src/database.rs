@@ -7,8 +7,8 @@ use serde::{Deserialize, Serialize};
 /// Database of articles and user votes. This struct can be serialized to store it.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct Database {
-    /// A list of all article names. Index in this list is the article id.
-    articles: Vec<String>,
+    /// Maps article names to internal article ids.
+    articles: BTreeMap<String, usize>,
 
     /// A list of all article page ids. Index in this list is the article id.
     page_ids: Vec<String>,
@@ -28,7 +28,7 @@ impl Database {
     /// Creates a new empty database builder.
     pub(crate) fn new() -> Self {
         Self {
-            articles: Vec::new(),
+            articles: BTreeMap::new(),
             page_ids: Vec::new(),
             article_votes: Vec::new(),
             total_votes: 0,
@@ -58,7 +58,7 @@ impl Database {
     /// - ```votes```: A list of tuples of user ids and votes. The first component of the tuple is
     /// the user id, the second component is the vote (true for upvote, false for downvote).
     pub(crate) fn add_article(&mut self, article: String, page_id: String, votes: Vec<(usize, bool)>) {
-        self.articles.push(article);
+        self.articles.insert(article, self.articles.len());
         self.page_ids.push(page_id);
         self.total_votes += votes.len();
         self.article_votes.push(votes);
@@ -178,8 +178,8 @@ impl PredictionModel {
         let user_factor = self.user_factors.row(*user_id);
 
         let mut predictions = Vec::new();
-        for (article_id, article) in self.database.articles.iter().enumerate() {
-            let article_factor = self.article_factors.row(article_id);
+        for (article, article_id) in self.database.articles.iter() {
+            let article_factor = self.article_factors.row(*article_id);
             let prediction = user_factor.dot(&article_factor);
             predictions.push((article, prediction));
         }
@@ -204,8 +204,8 @@ impl PredictionModel {
 
     /// Predicts the votes of all users for a given article and reports the `top` predictions to the console.
     pub fn predict_for_article(&self, name: &str, top: usize) {
-        let article_id = if let Some(article_id) = self.database.articles.iter().position(|article| article == name) {
-            article_id
+        let article_id = if let Some(article_id) = self.database.articles.get(name) {
+            *article_id
         } else {
             println!("Article not found.");
             return;
