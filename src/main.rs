@@ -42,7 +42,7 @@ fn main() {
         Some(("update", args)) => {
             let from = *args.get_one::<usize>("from").unwrap_or(&6000usize);
             let to = *args.get_one::<usize>("to").unwrap_or(&7999usize);
-            Updater::new().update(from, to);
+            Updater::load().update(from, to);
         },
         Some(("train", args)) => {
             let latent_factors = *args.get_one::<usize>("latent_factors").unwrap_or(&30usize);

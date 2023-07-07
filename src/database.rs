@@ -64,6 +64,13 @@ impl Database {
         self.article_votes.push(votes);
     }
 
+    pub(crate) fn update_article(&mut self, article: String, votes: Vec<(usize, bool)>) {
+        let article_id = *self.articles.get(&article).unwrap();
+        self.total_votes -= self.article_votes[article_id].len();
+        self.total_votes += votes.len();
+        self.article_votes[article_id] = votes;
+    }
+
     /// Adds a new user to the database.
     /// Returns the user id.
     pub(crate) fn add_user(&mut self, user: String) -> usize {
@@ -144,6 +151,12 @@ impl Database {
         let serialized = serde_cbor::to_vec(&model).unwrap();
         file.write_all(&serialized).expect("Failed to write prediction model to file.");
         println!("Saved prediction model to file.");
+    }
+
+    /// Returns the internal wikidot page id for a given article or none, if the article is not
+    /// in the database.
+    pub fn get_page_id(&self, article: &str) -> Option<&String> {
+        self.articles.get(article).map(|id| &self.page_ids[*id])
     }
 }
 

@@ -1,3 +1,4 @@
+use std::fs::File;
 use std::str::FromStr;
 use std::time::Duration;
 use isahc::HttpClient;
@@ -24,7 +25,7 @@ pub(crate) struct Updater {
 }
 
 impl Updater {
-    pub fn new() -> Self {
+    fn new() -> Self {
         let cookie_jar = CookieJar::new();
 
         Self {
@@ -40,6 +41,17 @@ impl Updater {
             head_selector: Selector::parse("head").unwrap(),
             script_selector: Selector::parse("script").unwrap(),
         }
+    }
+
+    /// Loads an updater from the database file. If there is no database file, a new updater is
+    /// created.
+    pub(crate) fn load() -> Self {
+        let mut updater = Self::new();
+        if File::open("database.bin").is_ok() {
+            updater.database = Database::load();
+        }
+
+        updater
     }
 
     /// Scrape SCP articles and user votes from the wiki without the API. Stores them in a
@@ -66,20 +78,27 @@ impl Updater {
         for number in from..=to {
             // download article
             let article_name = format!("scp-{:03}", number);
-            let article = self.download_article(&article_name);
-            let body = if let Some(body) = article {
-                body
-            } else {
-                continue;
-            };
+            let mut article_present = false;
 
-            // parse article dom and extract article id
-            let dom = Html::parse_document(&body);
-            let page_id = if let Some(page_id) = self.extract_page_id(&dom) {
-                page_id.to_string()
+            let page_id = if let Some(page_id) = self.database.get_page_id(&article_name) {
+                article_present = true;
+                page_id.clone()
             } else {
-                println!("Failed to extract page id for article {}", article_name);
-                continue;
+                let article = self.download_article(&article_name);
+                let body = if let Some(body) = article {
+                    body
+                } else {
+                    continue;
+                };
+
+                // parse article dom and extract article id
+                let dom = Html::parse_document(&body);
+                if let Some(page_id) = self.extract_page_id(&dom) {
+                    page_id.to_string()
+                } else {
+                    println!("Failed to extract page id for article {}", article_name);
+                    continue;
+                }
             };
 
             // download votes
@@ -128,8 +147,13 @@ impl Updater {
             }
 
             // add article to database
-            println!("added article to database with {} votes", votes.len());
-            self.database.add_article(article_name, page_id, votes);
+            if article_present {
+                println!("Updated article {} with {} votes", article_name, votes.len());
+                self.database.update_article(article_name, votes);
+            } else {
+                println!("added article to database with {} votes", votes.len());
+                self.database.add_article(article_name, page_id, votes);
+            }
         }
 
         println!("Finished generating database. Saving to file...");
